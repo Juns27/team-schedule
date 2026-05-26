@@ -5,10 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Team Schedule</title>
 
-<!-- =====================================================
-  FIREBASE CONFIG — Replace with your own project values
-  https://console.firebase.google.com → Project Settings → Your apps
-  ===================================================== -->
 <script>
 const FIREBASE_CONFIG = {
   apiKey:            "AIzaSyDeHhsQJr-RnmrvNGr9T9lsluSWYWi51Xc",
@@ -19,424 +15,450 @@ const FIREBASE_CONFIG = {
   messagingSenderId: "208865509042",
   appId:             "1:208865509042:web:0bcdfff5411c0dcf9393ab"
 };
+
+// ── 팀원 고정 목록 ──────────────────────────────────────────
+const MEMBERS = [
+  { id:"wkh", name:"원광현",      email:"kwang-hyun.won@mercedes-benz.com", color:"#1a73e8" },
+  { id:"ajs", name:"안준상",      email:"joon-sang.ahn@mercedes-benz.com",  color:"#e53935" },
+  { id:"ag",  name:"Ashley Giles",email:"ashley.giles@mercedes-benz.com",   color:"#43a047" },
+  { id:"phx", name:"박혁신",      email:"hyuksin.park@mercedes-benz.com",   color:"#d81b60" },
+  { id:"ph",  name:"박 현",       email:"hyun.park@mercedes-benz.com",      color:"#8e24aa" },
+  { id:"jjh", name:"정종훈",      email:"jonghun.jung@mercedes-benz.com",   color:"#00897b" },
+  { id:"cjy", name:"천준영",      email:"juns.chun@mercedes-benz.com",      color:"#fb8c00" }, // MASTER
+  { id:"cjw", name:"최진원",      email:"jinwon.choi@mercedes-benz.com",    color:"#3949ab" },
+];
+const MASTER_ID = "cjy";
 </script>
 
 <script type="module">
-import { initializeApp }           from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getDatabase, ref, set, onValue, push, remove, update }
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, set, get, onValue, remove, update }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
-// ─── i18n ────────────────────────────────────────────────────────────────────
+// ── i18n ─────────────────────────────────────────────────────
 const LANG = {
   ko: {
-    appTitle:       "팀 일정",
-    tabStatus:      "실시간 현황판",
-    tabTeam:        "팀 전체 일정",
-    tabMy:          "내 일정 입력",
-    prevWeek:       "이전 주",
-    nextWeek:       "다음 주",
-    today:          "오늘",
-    myStatus:       "내 상태",
-    statusOffice:   "출근",
-    statusRemote:   "재택",
-    statusField:    "외근",
-    statusBusiness: "출장",
-    statusTraining: "교육",
-    statusSeminar:  "세미나",
-    statusVacation: "휴가",
-    statusAnnual:   "연차",
-    statusHalfAM:   "오전반차",
-    statusHalfPM:   "오후반차",
-    currentTask:    "현재 업무",
-    currentTaskPh:  "지금 하고 있는 업무를 입력하세요",
-    save:           "저장",
-    cancel:         "취소",
-    delete:         "삭제",
-    add:            "추가",
-    name:           "이름",
-    namePh:         "이름을 입력하세요",
-    color:          "색상",
-    timeslot:       "시간대",
-    slotAM:         "오전 (09:00~13:00)",
-    slotPM:         "오후 (14:00~18:00)",
-    slotFull:       "하루 (09:00~18:00)",
-    title:          "내용",
-    titlePh:        "일정 내용",
-    welcome:        "처음 방문하셨군요! 이름과 색상을 설정해 주세요.",
-    lastUpdated:    "업데이트",
-    noSchedule:     "일정 없음",
-    confirmDelete:  "이 일정을 삭제할까요?",
-    weekOf:         "주",
-    days:           ["월","화","수","목","금","토","일"],
-    daysLong:       ["월요일","화요일","수요일","목요일","금요일","토요일","일요일"],
-    statusUpdated:  "상태가 업데이트됐습니다",
-    scheduleAdded:  "일정이 추가됐습니다",
-    scheduleDeleted:"일정이 삭제됐습니다",
-    firebaseNotSet: "Firebase 설정이 필요합니다. 상단 FIREBASE_CONFIG를 채워주세요.",
-    connecting:     "Firebase 연결 중...",
-    connected:      "실시간 연결됨",
-    offline:        "오프라인 모드 (localStorage)",
+    appTitle:"팀 일정", tabStatus:"실시간 현황판", tabTeam:"팀 전체 일정", tabMy:"내 일정 입력",
+    myStatus:"내 상태", currentTaskPh:"지금 하고 있는 업무를 입력하세요",
+    save:"저장", cancel:"취소", add:"추가",
+    slotAM:"오전 (09:00~13:00)", slotPM:"오후 (14:00~18:00)", slotFull:"하루 (09:00~18:00)",
+    titlePh:"일정 내용", noSchedule:"일정 없음", confirmDelete:"이 일정을 삭제할까요?",
+    days:["월","화","수","목","금","토","일"],
+    statusUpdated:"상태가 업데이트됐습니다", scheduleAdded:"일정이 추가됐습니다",
+    scheduleDeleted:"일정이 삭제됐습니다", lastUpdated:"업데이트",
+    connecting:"Firebase 연결 중...", connected:"실시간 연결됨",
+    selectUser:"로그인", selectUserDesc:"이름을 선택하고 4자리 PIN을 입력하세요",
+    pinSet:"PIN 설정", pinSetDesc:"처음 사용하시는군요! 4자리 숫자 PIN을 설정해 주세요.",
+    pinConfirm:"PIN 확인", pinConfirmDesc:"PIN을 한 번 더 입력해 주세요.",
+    pinLogin:"PIN 입력", pinLoginDesc:"4자리 PIN을 입력하세요.",
+    pinWrong:"PIN이 틀렸습니다. 다시 시도해 주세요.",
+    pinMismatch:"PIN이 일치하지 않습니다. 다시 입력해 주세요.",
+    pinOk:"로그인됐습니다!", pinReset:"PIN이 초기화됐습니다.",
+    masterPanel:"관리자 패널", pinResetBtn:"PIN 초기화",
+    logout:"로그아웃", logoutConfirm:"로그아웃 하시겠어요?",
+    statusOffice:"출근", statusRemote:"재택", statusField:"외근",
+    statusBusiness:"출장", statusTraining:"교육", statusSeminar:"세미나",
+    statusVacation:"휴가", statusAnnual:"연차", statusHalfAM:"오전반차", statusHalfPM:"오후반차",
   },
   en: {
-    appTitle:       "Team Schedule",
-    tabStatus:      "Live Dashboard",
-    tabTeam:        "Team Schedule",
-    tabMy:          "My Schedule",
-    prevWeek:       "Prev",
-    nextWeek:       "Next",
-    today:          "Today",
-    myStatus:       "My Status",
-    statusOffice:   "In Office",
-    statusRemote:   "Remote",
-    statusField:    "Field Work",
-    statusBusiness: "Business Trip",
-    statusTraining: "Training",
-    statusSeminar:  "Seminar",
-    statusVacation: "Vacation",
-    statusAnnual:   "Annual Leave",
-    statusHalfAM:   "Half Day AM",
-    statusHalfPM:   "Half Day PM",
-    currentTask:    "Current Task",
-    currentTaskPh:  "What are you working on?",
-    save:           "Save",
-    cancel:         "Cancel",
-    delete:         "Delete",
-    add:            "Add",
-    name:           "Name",
-    namePh:         "Enter your name",
-    color:          "Color",
-    timeslot:       "Time Slot",
-    slotAM:         "Morning (09:00–13:00)",
-    slotPM:         "Afternoon (14:00–18:00)",
-    slotFull:       "Full Day (09:00–18:00)",
-    title:          "Title",
-    titlePh:        "Schedule title",
-    welcome:        "Welcome! Please set your name and color.",
-    lastUpdated:    "Updated",
-    noSchedule:     "No schedule",
-    confirmDelete:  "Delete this schedule?",
-    weekOf:         "Week of",
-    days:           ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"],
-    daysLong:       ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"],
-    statusUpdated:  "Status updated",
-    scheduleAdded:  "Schedule added",
-    scheduleDeleted:"Schedule deleted",
-    firebaseNotSet: "Firebase config required. Fill in FIREBASE_CONFIG at the top.",
-    connecting:     "Connecting to Firebase...",
-    connected:      "Live – connected",
-    offline:        "Offline mode (localStorage)",
+    appTitle:"Team Schedule", tabStatus:"Live Dashboard", tabTeam:"Team Schedule", tabMy:"My Schedule",
+    myStatus:"My Status", currentTaskPh:"What are you working on?",
+    save:"Save", cancel:"Cancel", add:"Add",
+    slotAM:"Morning (09:00–13:00)", slotPM:"Afternoon (14:00–18:00)", slotFull:"Full Day (09:00–18:00)",
+    titlePh:"Schedule title", noSchedule:"No schedule", confirmDelete:"Delete this schedule?",
+    days:["Mon","Tue","Wed","Thu","Fri","Sat","Sun"],
+    statusUpdated:"Status updated", scheduleAdded:"Schedule added",
+    scheduleDeleted:"Schedule deleted", lastUpdated:"Updated",
+    connecting:"Connecting...", connected:"Live – connected",
+    selectUser:"Login", selectUserDesc:"Select your name and enter your 4-digit PIN",
+    pinSet:"Set PIN", pinSetDesc:"First time here! Please set a 4-digit PIN.",
+    pinConfirm:"Confirm PIN", pinConfirmDesc:"Enter your PIN again to confirm.",
+    pinLogin:"Enter PIN", pinLoginDesc:"Enter your 4-digit PIN.",
+    pinWrong:"Wrong PIN. Please try again.",
+    pinMismatch:"PINs don't match. Please try again.",
+    pinOk:"Logged in!", pinReset:"PIN has been reset.",
+    masterPanel:"Admin Panel", pinResetBtn:"Reset PIN",
+    logout:"Logout", logoutConfirm:"Are you sure you want to logout?",
+    statusOffice:"In Office", statusRemote:"Remote", statusField:"Field Work",
+    statusBusiness:"Business Trip", statusTraining:"Training", statusSeminar:"Seminar",
+    statusVacation:"Vacation", statusAnnual:"Annual Leave", statusHalfAM:"Half Day AM", statusHalfPM:"Half Day PM",
   }
 };
-
-// ─── State ───────────────────────────────────────────────────────────────────
-let lang     = localStorage.getItem("lang") || "ko";
-let db       = null;
-let myId     = localStorage.getItem("myId");
-let myName   = localStorage.getItem("myName") || "";
-let myColor  = localStorage.getItem("myColor") || "#1a73e8";
-let activeTab= "status";
-let weekOffset = 0;
-let teamData = {};   // { [uid]: { name, color, status, task, schedules:{} } }
-
-const COLORS = [
-  "#1a73e8","#e53935","#43a047","#fb8c00","#8e24aa",
-  "#00897b","#d81b60","#3949ab","#f4511e","#039be5"
-];
 
 const STATUS_META = {
-  office:   { icon:"🏢", key:"statusOffice"   },
-  remote:   { icon:"🏠", key:"statusRemote"   },
-  field:    { icon:"🚗", key:"statusField"    },
-  business: { icon:"✈️",  key:"statusBusiness" },
-  training: { icon:"📚", key:"statusTraining" },
-  seminar:  { icon:"🎤", key:"statusSeminar"  },
-  vacation: { icon:"🌴", key:"statusVacation" },
-  annual:   { icon:"📅", key:"statusAnnual"   },
-  halfAM:   { icon:"🌅", key:"statusHalfAM"  },
-  halfPM:   { icon:"🌇", key:"statusHalfPM"  },
+  office:   {icon:"🏢",key:"statusOffice"},  remote:  {icon:"🏠",key:"statusRemote"},
+  field:    {icon:"🚗",key:"statusField"},   business:{icon:"✈️", key:"statusBusiness"},
+  training: {icon:"📚",key:"statusTraining"},seminar: {icon:"🎤",key:"statusSeminar"},
+  vacation: {icon:"🌴",key:"statusVacation"},annual:  {icon:"📅",key:"statusAnnual"},
+  halfAM:   {icon:"🌅",key:"statusHalfAM"}, halfPM:  {icon:"🌇",key:"statusHalfPM"},
 };
 
-// ─── i18n helper ─────────────────────────────────────────────────────────────
+const TIMESLOTS = {
+  AM:{start:"09:00",end:"13:00"}, PM:{start:"14:00",end:"18:00"}, FULL:{start:"09:00",end:"18:00"}
+};
+
+// ── State ─────────────────────────────────────────────────────
+let lang        = localStorage.getItem("lang") || "ko";
+let db          = null;
+let myId        = localStorage.getItem("myId") || null;
+let activeTab   = "status";
+let weekOffset  = 0;
+let myDayOffset = 0;
+let selectedSlot= "FULL";
+let teamData    = {};
+// PIN 로그인 단계: "select" | "pin_set" | "pin_confirm" | "pin_login"
+let pinStep     = "select";
+let pinTarget   = null;  // 선택된 MEMBER id
+let pinFirst    = "";    // 첫 입력 PIN (confirm 단계에서 비교용)
+
 const t = k => LANG[lang][k] || k;
+const myMember = () => MEMBERS.find(m => m.id === myId);
 
-// ─── Firebase init ───────────────────────────────────────────────────────────
+// ── Firebase ──────────────────────────────────────────────────
 function initFirebase() {
-  if (FIREBASE_CONFIG.apiKey === "YOUR_API_KEY") {
-    showToast(t("firebaseNotSet"), "warn");
-    showToast(t("offline"), "info");
-    return false;
-  }
-  try {
-    const app = initializeApp(FIREBASE_CONFIG);
-    db = getDatabase(app);
-    document.getElementById("connStatus").textContent = "● " + t("connecting");
-    onValue(ref(db, "team"), snap => {
-      teamData = snap.val() || {};
-      renderAll();
-      document.getElementById("connStatus").textContent = "● " + t("connected");
-      document.getElementById("connStatus").style.color = "#43a047";
-    });
-    return true;
-  } catch(e) {
-    console.error(e);
-    showToast(t("offline"), "warn");
-    return false;
-  }
-}
-
-// ─── localStorage fallback ───────────────────────────────────────────────────
-function loadLocal() {
-  try { teamData = JSON.parse(localStorage.getItem("teamData") || "{}"); } catch(e) { teamData = {}; }
-  renderAll();
-}
-function saveLocal() {
-  localStorage.setItem("teamData", JSON.stringify(teamData));
-}
-
-// ─── Write helpers ────────────────────────────────────────────────────────────
-async function writeUser(patch) {
-  if (!myId) return;
-  if (db) {
-    await update(ref(db, `team/${myId}`), patch);
-  } else {
-    teamData[myId] = { ...teamData[myId], ...patch };
-    saveLocal();
+  const app = initializeApp(FIREBASE_CONFIG);
+  db = getDatabase(app);
+  document.getElementById("connStatus").textContent = "● " + t("connecting");
+  onValue(ref(db, "team"), snap => {
+    teamData = snap.val() || {};
     renderAll();
-  }
-}
-
-async function writeSchedule(dayKey, schedId, data) {
-  if (!myId) return;
-  if (db) {
-    const path = `team/${myId}/schedules/${dayKey}/${schedId}`;
-    if (data === null) await remove(ref(db, path));
-    else await set(ref(db, path), data);
-  } else {
-    if (!teamData[myId]) teamData[myId] = {};
-    if (!teamData[myId].schedules) teamData[myId].schedules = {};
-    if (!teamData[myId].schedules[dayKey]) teamData[myId].schedules[dayKey] = {};
-    if (data === null) delete teamData[myId].schedules[dayKey][schedId];
-    else teamData[myId].schedules[dayKey][schedId] = data;
-    saveLocal();
-    renderAll();
-  }
-}
-
-// ─── Date helpers ─────────────────────────────────────────────────────────────
-function getMondayOf(offset) {
-  const d = new Date();
-  const day = d.getDay();
-  const diff = (day === 0 ? -6 : 1 - day);
-  d.setDate(d.getDate() + diff + offset * 7);
-  d.setHours(0,0,0,0);
-  return d;
-}
-function dateKey(d) {
-  return d.toISOString().slice(0,10);
-}
-function fmtWeekLabel(monday) {
-  const sunday = new Date(monday); sunday.setDate(sunday.getDate()+6);
-  const fmt = d => `${d.getMonth()+1}/${d.getDate()}`;
-  return `${fmt(monday)} – ${fmt(sunday)}`;
-}
-function timeToMin(s) {
-  const [h,m] = s.split(":").map(Number); return h*60+m;
-}
-function minToTime(m) {
-  return `${String(Math.floor(m/60)).padStart(2,"0")}:${String(m%60).padStart(2,"0")}`;
-}
-
-// ─── Unique ID ────────────────────────────────────────────────────────────────
-function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
-
-// ─── Toast ────────────────────────────────────────────────────────────────────
-function showToast(msg, type="ok") {
-  const t = document.createElement("div");
-  t.className = `toast toast-${type}`;
-  t.textContent = msg;
-  document.getElementById("toastArea").appendChild(t);
-  setTimeout(() => t.remove(), 3000);
-}
-
-// ─── Setup modal ─────────────────────────────────────────────────────────────
-function showSetup() {
-  document.getElementById("setupModal").classList.add("open");
-  renderColorPicker("setupColorPicker", myColor, c => { myColor = c; });
-  document.getElementById("setupName").value = myName;
-}
-function hideSetup() {
-  document.getElementById("setupModal").classList.remove("open");
-}
-async function saveSetup() {
-  const name = document.getElementById("setupName").value.trim();
-  if (!name) { document.getElementById("setupName").focus(); return; }
-  myName  = name;
-  if (!myId) myId = uid();
-  localStorage.setItem("myId",    myId);
-  localStorage.setItem("myName",  myName);
-  localStorage.setItem("myColor", myColor);
-  document.getElementById("userBadge").textContent = myName;
-  document.getElementById("userBadge").style.background = myColor;
-  await writeUser({ name: myName, color: myColor,
-    status: teamData[myId]?.status || "office",
-    task:   teamData[myId]?.task   || "" });
-  hideSetup();
-  renderAll();
-}
-
-// ─── Color picker ────────────────────────────────────────────────────────────
-function renderColorPicker(containerId, selected, onChange) {
-  const el = document.getElementById(containerId);
-  el.innerHTML = COLORS.map(c =>
-    `<span class="color-dot${c===selected?" selected":""}" style="background:${c}"
-      data-c="${c}"></span>`
-  ).join("");
-  el.querySelectorAll(".color-dot").forEach(dot => {
-    dot.onclick = () => {
-      el.querySelectorAll(".color-dot").forEach(d=>d.classList.remove("selected"));
-      dot.classList.add("selected");
-      onChange(dot.dataset.c);
-    };
+    document.getElementById("connStatus").textContent = "● " + t("connected");
+    document.getElementById("connStatus").style.color = "#43a047";
   });
 }
 
-// ─── Render all ──────────────────────────────────────────────────────────────
-function renderAll() {
-  renderHeader();
-  if (activeTab === "status") renderStatus();
-  else if (activeTab === "team") renderTeam();
-  else if (activeTab === "my")   renderMy();
+async function writeUser(patch) {
+  if (!myId || !db) return;
+  await update(ref(db, `team/${myId}`), patch);
+}
+async function writeSchedule(dayKey, schedId, data) {
+  if (!myId || !db) return;
+  const path = `team/${myId}/schedules/${dayKey}/${schedId}`;
+  if (data === null) await remove(ref(db, path));
+  else await set(ref(db, path), data);
 }
 
-function renderHeader() {
+// ── PIN 로그인 ─────────────────────────────────────────────────
+function showLoginModal() {
+  pinStep   = "select";
+  pinTarget = null;
+  pinFirst  = "";
+  document.getElementById("loginModal").classList.add("open");
+  renderLoginModal();
+}
+function hideLoginModal() {
+  document.getElementById("loginModal").classList.remove("open");
+  clearPinBoxes();
+}
+
+function renderLoginModal() {
+  const titleEl = document.getElementById("loginTitle");
+  const descEl  = document.getElementById("loginDesc");
+  const gridEl  = document.getElementById("memberGrid");
+  const pinArea = document.getElementById("pinArea");
+  const backBtn = document.getElementById("loginBackBtn");
+
+  clearPinBoxes();
+
+  if (pinStep === "select") {
+    titleEl.textContent = t("selectUser");
+    descEl.textContent  = t("selectUserDesc");
+    gridEl.style.display = "grid";
+    pinArea.style.display = "none";
+    backBtn.style.display = "none";
+
+    gridEl.innerHTML = MEMBERS.map(m =>
+      `<button class="member-pick" style="--mc:${m.color}" data-id="${m.id}">
+        <span class="mp-avatar" style="background:${m.color}">${m.name[0]}</span>
+        <div class="mp-info">
+          <span class="mp-name">${m.name}</span>
+          <span class="mp-email">${m.email}</span>
+        </div>
+      </button>`
+    ).join("");
+
+    gridEl.querySelectorAll(".member-pick").forEach(btn => {
+      btn.onclick = () => startPinStep(btn.dataset.id);
+    });
+
+  } else {
+    const member = MEMBERS.find(m => m.id === pinTarget);
+    gridEl.style.display = "none";
+    pinArea.style.display = "flex";
+    backBtn.style.display = "inline-block";
+
+    // 아바타
+    document.getElementById("pinAvatar").textContent    = member.name[0];
+    document.getElementById("pinAvatar").style.background = member.color;
+    document.getElementById("pinMemberName").textContent  = member.name;
+    document.getElementById("pinMemberEmail").textContent = member.email;
+
+    if (pinStep === "pin_set") {
+      titleEl.textContent = t("pinSet");
+      descEl.textContent  = t("pinSetDesc");
+    } else if (pinStep === "pin_confirm") {
+      titleEl.textContent = t("pinConfirm");
+      descEl.textContent  = t("pinConfirmDesc");
+    } else {
+      titleEl.textContent = t("pinLogin");
+      descEl.textContent  = t("pinLoginDesc");
+    }
+
+    // 포커스 첫 번째 박스
+    setTimeout(() => document.querySelector(".pin-box")?.focus(), 100);
+  }
+}
+
+async function startPinStep(memberId) {
+  pinTarget = memberId;
+  const snap = await get(ref(db, `team/${memberId}/pin`));
+  pinStep = snap.val() ? "pin_login" : "pin_set";
+  renderLoginModal();
+}
+
+function clearPinBoxes() {
+  document.querySelectorAll(".pin-box").forEach(b => { b.value = ""; });
+}
+
+function getPinValue() {
+  return Array.from(document.querySelectorAll(".pin-box")).map(b => b.value).join("");
+}
+
+async function submitPin() {
+  const pin = getPinValue();
+  if (pin.length < 4) return;
+
+  if (pinStep === "pin_set") {
+    pinFirst = pin;
+    pinStep  = "pin_confirm";
+    renderLoginModal();
+
+  } else if (pinStep === "pin_confirm") {
+    if (pin !== pinFirst) {
+      showToast(t("pinMismatch"), "warn");
+      clearPinBoxes();
+      document.querySelector(".pin-box")?.focus();
+      return;
+    }
+    // PIN 저장 후 로그인
+    await set(ref(db, `team/${pinTarget}/pin`), pin);
+    await loginAs(pinTarget);
+
+  } else if (pinStep === "pin_login") {
+    const snap = await get(ref(db, `team/${pinTarget}/pin`));
+    if (snap.val() !== pin) {
+      showToast(t("pinWrong"), "warn");
+      clearPinBoxes();
+      document.querySelector(".pin-box")?.focus();
+      // 틀린 박스 흔들기 애니메이션
+      document.getElementById("pinBoxes").classList.add("shake");
+      setTimeout(() => document.getElementById("pinBoxes").classList.remove("shake"), 500);
+      return;
+    }
+    await loginAs(pinTarget);
+  }
+}
+
+async function loginAs(memberId) {
+  myId = memberId;
+  localStorage.setItem("myId", myId);
+  const m = myMember();
+  await update(ref(db, `team/${myId}`), {
+    name:   m.name,
+    color:  m.color,
+    email:  m.email,
+    status: teamData[myId]?.status || "office",
+    task:   teamData[myId]?.task   || "",
+  });
+  hideLoginModal();
+  updateHeader();
+  showToast(t("pinOk"));
+  renderAll();
+}
+
+window.doLogout = async function() {
+  if (!confirm(t("logoutConfirm"))) return;
+  myId = null;
+  localStorage.removeItem("myId");
+  updateHeader();
+  showLoginModal();
+};
+
+// 마스터: PIN 초기화
+window.masterResetPin = async function(memberId) {
+  const m = MEMBERS.find(x => x.id === memberId);
+  if (!confirm(`${m.name}의 PIN을 초기화할까요?`)) return;
+  await set(ref(db, `team/${memberId}/pin`), null);
+  showToast(t("pinReset"));
+  renderMasterPanel();
+};
+
+// PIN 박스 키보드 처리
+window.onPinKeydown = function(e, idx) {
+  const boxes = document.querySelectorAll(".pin-box");
+  if (e.key === "Backspace" && !boxes[idx].value && idx > 0) {
+    boxes[idx-1].focus();
+  }
+};
+window.onPinInput = function(e, idx) {
+  const boxes = document.querySelectorAll(".pin-box");
+  const val = e.target.value.replace(/\D/g,"");
+  e.target.value = val.slice(-1);
+  if (val && idx < 3) boxes[idx+1].focus();
+  if (idx === 3 && getPinValue().length === 4) submitPin();
+};
+
+// ── 마스터 패널 ───────────────────────────────────────────────
+function showMasterPanel() {
+  document.getElementById("masterModal").classList.add("open");
+  renderMasterPanel();
+}
+window.closeMasterPanel = () => document.getElementById("masterModal").classList.remove("open");
+
+function renderMasterPanel() {
+  document.getElementById("masterPanelBody").innerHTML = MEMBERS.map(m => {
+    const hasPin = !!teamData[m.id]?.pin;
+    const isOnline = !!(teamData[m.id]?.name);
+    return `<div class="master-row">
+      <span class="mp-avatar sm" style="background:${m.color}">${m.name[0]}</span>
+      <div style="flex:1">
+        <div class="master-name">${m.name}</div>
+        <div class="master-email">${m.email}</div>
+      </div>
+      <span class="pin-status">${hasPin ? "🔑 PIN 설정됨" : "⬜ 미설정"}</span>
+      ${hasPin
+        ? `<button class="btn-unlock" onclick="masterResetPin('${m.id}')">${t("pinResetBtn")}</button>`
+        : `<span style="width:72px"></span>`}
+    </div>`;
+  }).join("");
+}
+
+// ── Header ────────────────────────────────────────────────────
+function updateHeader() {
+  const m   = myMember();
+  const badge   = document.getElementById("userBadge");
+  const masterBtn = document.getElementById("masterBtn");
+  const logoutBtn = document.getElementById("logoutBtn");
+  if (m) {
+    badge.textContent   = m.name[0];
+    badge.style.background = m.color;
+    badge.title         = m.name;
+    masterBtn.style.display = myId === MASTER_ID ? "inline-block" : "none";
+    logoutBtn.style.display = "inline-block";
+  } else {
+    badge.textContent   = "?";
+    badge.style.background = "#aaa";
+    masterBtn.style.display = "none";
+    logoutBtn.style.display = "none";
+  }
+}
+
+// ── Render ────────────────────────────────────────────────────
+function renderAll() {
   document.title = t("appTitle");
   document.getElementById("appTitle").textContent = t("appTitle");
   document.querySelector('[data-tab="status"]').textContent = t("tabStatus");
   document.querySelector('[data-tab="team"]').textContent   = t("tabTeam");
   document.querySelector('[data-tab="my"]').textContent     = t("tabMy");
+  if (activeTab === "status") renderStatus();
+  else if (activeTab === "team") renderTeam();
+  else if (activeTab === "my")  renderMy();
 }
 
-// ─── STATUS TAB ──────────────────────────────────────────────────────────────
+// ── STATUS ────────────────────────────────────────────────────
 function renderStatus() {
   const el = document.getElementById("statusContent");
-  // My status card
   const me = teamData[myId] || {};
   const myStatusVal = me.status || "office";
-  const myTask      = me.task   || "";
+  const myTask = me.task || "";
 
-  const GROUP1 = ["office","remote","field","business"];
-  const GROUP2 = ["training","seminar"];
-  const GROUP3 = ["vacation","annual","halfAM","halfPM"];
-  const mkBtn = ([k,v]) =>
-    `<button class="status-btn${myStatusVal===k?" active":""}"
-      style="${myStatusVal===k?`--sbg:${myColor};border-color:${myColor}`:""}"
+  const G1=["office","remote","field","business"];
+  const G2=["training","seminar"];
+  const G3=["vacation","annual","halfAM","halfPM"];
+  const mkBtn = k => {
+    const v = STATUS_META[k], active = myStatusVal===k;
+    return `<button class="status-btn${active?" active":""}"
+      style="${active?`--sbg:${myMember()?.color||"#1a73e8"};border-color:${myMember()?.color||"#1a73e8"}`:""}"
       data-s="${k}">${v.icon} ${t(v.key)}</button>`;
-  const statusBtns =
-    `<div class="status-group">${GROUP1.map(k=>mkBtn([k,STATUS_META[k]])).join("")}</div>` +
-    `<div class="status-group">${GROUP2.map(k=>mkBtn([k,STATUS_META[k]])).join("")}</div>` +
-    `<div class="status-group">${GROUP3.map(k=>mkBtn([k,STATUS_META[k]])).join("")}</div>`;
+  };
 
   el.innerHTML = `
     <div class="my-status-card">
-      <h3>${t("myStatus")}</h3>
-      <div class="status-btns">${statusBtns}</div>
+      <h3>${t("myStatus")} — <span style="color:${myMember()?.color||"#aaa"}">${myMember()?.name||""}</span></h3>
+      <div class="status-btns">
+        <div class="status-group">${G1.map(mkBtn).join("")}</div>
+        <div class="status-group">${G2.map(mkBtn).join("")}</div>
+        <div class="status-group">${G3.map(mkBtn).join("")}</div>
+      </div>
       <div class="task-row">
         <input id="taskInput" type="text" placeholder="${t("currentTaskPh")}"
           value="${escHtml(myTask)}" maxlength="80"/>
         <button class="btn-primary" onclick="saveTask()">${t("save")}</button>
       </div>
     </div>
-    <div class="team-dashboard">
-      ${renderDashboardCards()}
-    </div>
-  `;
+    <div class="team-dashboard">${renderDashboardCards()}</div>`;
 
   el.querySelectorAll(".status-btn").forEach(btn => {
-    btn.onclick = async () => {
-      await writeUser({ status: btn.dataset.s });
-      showToast(t("statusUpdated"));
-    };
+    btn.onclick = async () => { await writeUser({status:btn.dataset.s}); showToast(t("statusUpdated")); };
   });
 }
 
 function renderDashboardCards() {
-  const members = Object.entries(teamData).filter(([,v])=>v&&v.name);
-  if (!members.length) return `<p class="empty-msg">${t("noSchedule")}</p>`;
-  return members.map(([id, m]) => {
+  return MEMBERS.map(member => {
+    const m  = teamData[member.id] || {};
     const sm = STATUS_META[m.status] || STATUS_META.office;
-    const isMe = id === myId;
-    const now = new Date();
-    const timeStr = now.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
-    return `
-      <div class="dash-card${isMe?" dash-card--me":""}">
-        <div class="dash-card-top">
-          <span class="member-avatar" style="background:${m.color||"#1a73e8"}">${(m.name||"?")[0]}</span>
-          <div class="dash-card-info">
-            <strong>${escHtml(m.name)}</strong>
-            <span class="status-badge" style="background:${statusColor(m.status)}">${sm.icon} ${t(sm.key)}</span>
-          </div>
+    const isMe = member.id === myId;
+    const isOnline = !!m.name;
+    return `<div class="dash-card${isMe?" dash-card--me":""}" style="${isMe?`--mc:${member.color}`:""}">
+      <div class="dash-card-top">
+        <span class="member-avatar" style="background:${member.color}">${member.name[0]}</span>
+        <div class="dash-card-info">
+          <strong>${escHtml(member.name)}</strong>
+          <span class="status-badge" style="background:${statusColor(m.status)}">${sm.icon} ${t(sm.key)}</span>
         </div>
-        ${m.task ? `<div class="dash-task">💬 ${escHtml(m.task)}</div>` : ""}
-        <div class="dash-updated">${t("lastUpdated")}: ${timeStr}</div>
-      </div>`;
+        <span class="online-dot" style="background:${isOnline?"#43a047":"#ccc"}"
+          title="${isOnline?"접속 기록 있음":"미접속"}"></span>
+      </div>
+      ${m.task?`<div class="dash-task">💬 ${escHtml(m.task)}</div>`:""}
+    </div>`;
   }).join("");
 }
 
 function statusColor(s) {
-  const map = {
-    office:   "#e8f5e9",
-    remote:   "#e3f2fd",
-    field:    "#fff3e0",
-    business: "#fce4ec",
-    training: "#e8eaf6",
-    seminar:  "#f3e5f5",
-    vacation: "#fce4ec",
-    annual:   "#fce4ec",
-    halfAM:   "#fff9c4",
-    halfPM:   "#fff9c4",
-  };
-  return map[s] || "#f5f5f5";
+  return ({office:"#e8f5e9",remote:"#e3f2fd",field:"#fff3e0",business:"#fce4ec",
+    training:"#e8eaf6",seminar:"#f3e5f5",vacation:"#fce4ec",annual:"#fce4ec",
+    halfAM:"#fff9c4",halfPM:"#fff9c4"})[s]||"#f5f5f5";
 }
 
 window.saveTask = async function() {
-  const val = document.getElementById("taskInput").value.trim();
-  await writeUser({ task: val });
+  await writeUser({task: document.getElementById("taskInput").value.trim()});
   showToast(t("statusUpdated"));
 };
 
-// ─── TEAM SCHEDULE TAB ───────────────────────────────────────────────────────
+// ── TEAM SCHEDULE ─────────────────────────────────────────────
 function renderTeam() {
   const el = document.getElementById("teamContent");
   const monday = getMondayOf(weekOffset);
-  const days   = Array.from({length:7}, (_,i) => { const d=new Date(monday); d.setDate(d.getDate()+i); return d; });
-  const members = Object.entries(teamData).filter(([,v])=>v&&v.name);
+  const days = Array.from({length:7},(_,i)=>{ const d=new Date(monday); d.setDate(d.getDate()+i); return d; });
+  const SLOT_ROWS = [{label:"AM",start:"09:00"},{label:"PM",start:"14:00"}];
 
-  // Build header
-  const dayHeaders = days.map((d,i) => {
-    const isToday = dateKey(d) === dateKey(new Date());
+  const dayHeaders = days.map((d,i)=>{
+    const isToday = dateKey(d)===dateKey(new Date());
     return `<th class="${isToday?"today":""}">
       <span class="day-name">${t("days")[i]}</span>
-      <span class="day-date">${d.getMonth()+1}/${d.getDate()}</span>
-    </th>`;
+      <span class="day-date">${d.getMonth()+1}/${d.getDate()}</span></th>`;
   }).join("");
 
-  // Rows: AM row (09-13) / PM row (14-18) / Full spans both
-  const SLOT_ROWS = [
-    { label:"AM", start:"09:00", end:"13:00" },
-    { label:"PM", start:"14:00", end:"18:00" },
-  ];
-  const rows = SLOT_ROWS.map(row => {
-    const cells = days.map(d => {
-      const dk = dateKey(d);
-      const blocks = [];
-      members.forEach(([id,m]) => {
-        const scheds = m.schedules?.[dk] || {};
-        Object.entries(scheds).forEach(([sid, sc]) => {
-          const slotKey = sc.slot || (sc.end <= "13:00" ? "AM" : sc.start >= "14:00" ? "PM" : "FULL");
-          const show = slotKey === row.label || slotKey === "FULL";
-          if (!show) return;
-          blocks.push(`<div class="team-block" style="background:${hexAlpha(m.color||"#1a73e8",0.2)};border-left:3px solid ${m.color||"#1a73e8"}">
-            <span class="block-name">${(m.name||"")[0]}</span>
+  const rows = SLOT_ROWS.map(row=>{
+    const cells = days.map(d=>{
+      const dk = dateKey(d), blocks=[];
+      MEMBERS.forEach(member=>{
+        const scheds=(teamData[member.id]?.schedules?.[dk])||{};
+        Object.entries(scheds).forEach(([,sc])=>{
+          const sk=sc.slot||(sc.end<="13:00"?"AM":sc.start>="14:00"?"PM":"FULL");
+          if (sk!==row.label&&sk!=="FULL") return;
+          blocks.push(`<div class="team-block" style="background:${hexAlpha(member.color,0.2)};border-left:3px solid ${member.color}">
+            <span class="block-name">${member.name[0]}</span>
             <span class="block-title">${escHtml(sc.title)}</span>
           </div>`);
         });
@@ -446,464 +468,345 @@ function renderTeam() {
     return `<tr><td class="time-cell">${row.label}<br><small>${row.start}</small></td>${cells}</tr>`;
   }).join("");
 
-  // Legend
-  const legend = members.map(([,m]) =>
-    `<span class="legend-item"><span class="legend-dot" style="background:${m.color}"></span>${escHtml(m.name)}</span>`
+  const legend = MEMBERS.map(m=>
+    `<span class="legend-item"><span class="legend-dot" style="background:${m.color}"></span>${m.name}</span>`
   ).join("");
 
-  el.innerHTML = `
+  el.innerHTML=`
     <div class="legend-row">${legend}</div>
     <div class="table-scroll">
       <table class="schedule-table">
         <thead><tr><th class="time-head"></th>${dayHeaders}</tr></thead>
         <tbody>${rows}</tbody>
       </table>
-    </div>
-  `;
+    </div>`;
 }
 
-// ─── MY SCHEDULE TAB ─────────────────────────────────────────────────────────
-let myDayOffset = 0; // 0=Mon…6=Sun within the week
-
+// ── MY SCHEDULE ───────────────────────────────────────────────
 function renderMy() {
-  if (!myId || !myName) {
-    document.getElementById("myContent").innerHTML =
-      `<div class="empty-msg" style="padding:40px;text-align:center">
-        <button class="btn-primary" onclick="showSetup()">${t("welcome")}</button></div>`;
+  const container = document.getElementById("myContent");
+  if (!myId) {
+    container.innerHTML=`<div style="padding:40px;text-align:center">
+      <button class="btn-primary" onclick="showLoginModal()">${t("selectUser")}</button></div>`;
     return;
   }
   const monday = getMondayOf(weekOffset);
-  const selDay = new Date(monday); selDay.setDate(selDay.getDate() + myDayOffset);
+  const selDay = new Date(monday); selDay.setDate(selDay.getDate()+myDayOffset);
   const dk = dateKey(selDay);
-  const scheds = teamData[myId]?.schedules?.[dk] || {};
+  const scheds = teamData[myId]?.schedules?.[dk]||{};
+  const member = myMember();
+  const slotLabels={AM:t("slotAM"),PM:t("slotPM"),FULL:t("slotFull")};
 
-  const dayTabs = Array.from({length:7}, (_,i) => {
-    const d = new Date(monday); d.setDate(d.getDate()+i);
-    const isToday = dateKey(d) === dateKey(new Date());
-    return `<button class="day-tab${i===myDayOffset?" active":""}${isToday?" today":""}"
-      data-di="${i}">${t("days")[i]}<br><small>${d.getMonth()+1}/${d.getDate()}</small></button>`;
+  const dayTabs=Array.from({length:7},(_,i)=>{
+    const d=new Date(monday); d.setDate(d.getDate()+i);
+    const isToday=dateKey(d)===dateKey(new Date());
+    return `<button class="day-tab${i===myDayOffset?" active":""}${isToday?" today":""}" data-di="${i}">
+      ${t("days")[i]}<br><small>${d.getMonth()+1}/${d.getDate()}</small></button>`;
   }).join("");
 
-  const slotLabels = { AM: t("slotAM"), PM: t("slotPM"), FULL: t("slotFull") };
-  const schedList = Object.entries(scheds).map(([sid, sc]) => {
-    const slotKey = sc.slot || (sc.end <= "13:00" ? "AM" : sc.start >= "14:00" ? "PM" : "FULL");
-    const badge = slotLabels[slotKey] || `${sc.start}–${sc.end}`;
-    return `<div class="my-block" style="background:${hexAlpha(myColor,0.12)};border-left:4px solid ${myColor}">
+  const schedList=Object.entries(scheds).map(([sid,sc])=>{
+    const sk=sc.slot||(sc.end<="13:00"?"AM":sc.start>="14:00"?"PM":"FULL");
+    return `<div class="my-block" style="background:${hexAlpha(member.color,0.12)};border-left:4px solid ${member.color}">
       <div class="my-block-main">
         <span class="my-block-title">${escHtml(sc.title)}</span>
-        <span class="my-block-badge">${badge}</span>
+        <span class="my-block-badge">${slotLabels[sk]||""}</span>
       </div>
       <button class="del-btn" data-sid="${sid}" data-dk="${dk}">×</button>
     </div>`;
   }).join("");
 
-  document.getElementById("myContent").innerHTML = `
+  container.innerHTML=`
     <div class="day-tabs">${dayTabs}</div>
     <div class="my-schedule-area">
-      ${schedList || `<p class="empty-day">${t("noSchedule")}</p>`}
+      ${schedList||`<p class="empty-day">${t("noSchedule")}</p>`}
       <button class="add-day-btn" data-dk="${dk}">+ ${t("add")}</button>
-    </div>
-  `;
+    </div>`;
 
-  document.querySelectorAll(".day-tab").forEach(btn => {
-    btn.onclick = () => { myDayOffset = +btn.dataset.di; renderMy(); };
-  });
-  document.querySelectorAll(".add-day-btn").forEach(btn => {
-    btn.onclick = () => openAddModal(btn.dataset.dk);
-  });
-  document.querySelectorAll(".del-btn").forEach(btn => {
-    btn.onclick = async () => {
-      if (!confirm(t("confirmDelete"))) return;
-      await writeSchedule(btn.dataset.dk, btn.dataset.sid, null);
+  container.querySelectorAll(".day-tab").forEach(b=>{b.onclick=()=>{myDayOffset=+b.dataset.di;renderMy();};});
+  container.querySelectorAll(".add-day-btn").forEach(b=>{b.onclick=()=>openAddModal(b.dataset.dk);});
+  container.querySelectorAll(".del-btn").forEach(b=>{
+    b.onclick=async()=>{
+      if(!confirm(t("confirmDelete"))) return;
+      await writeSchedule(b.dataset.dk,b.dataset.sid,null);
       showToast(t("scheduleDeleted"));
     };
   });
 }
 
-// ─── Time slot definitions ────────────────────────────────────────────────────
-const TIMESLOTS = {
-  AM:   { start: "09:00", end: "13:00" },
-  PM:   { start: "14:00", end: "18:00" },
-  FULL: { start: "09:00", end: "18:00" },
-};
-let selectedSlot = "FULL"; // default
-
-// ─── Add schedule modal ───────────────────────────────────────────────────────
+// ── Add modal ─────────────────────────────────────────────────
 function openAddModal(dk) {
-  selectedSlot = "FULL";
+  selectedSlot="FULL";
   document.getElementById("addModal").classList.add("open");
-  document.getElementById("addTitle").value = "";
-  document.getElementById("addDk").value    = dk;
+  document.getElementById("addTitle").value="";
+  document.getElementById("addDk").value=dk;
   renderSlotBtns();
   document.getElementById("addTitle").focus();
 }
 function renderSlotBtns() {
-  document.querySelectorAll(".slot-pick-btn").forEach(b => {
-    b.classList.toggle("active", b.dataset.slot === selectedSlot);
+  document.querySelectorAll(".slot-pick-btn").forEach(b=>{
+    b.classList.toggle("active",b.dataset.slot===selectedSlot);
   });
 }
-function closeAddModal() {
-  document.getElementById("addModal").classList.remove("open");
-}
-window.closeAddModal = closeAddModal;
-window.pickSlot = function(slot) {
-  selectedSlot = slot;
-  renderSlotBtns();
-};
-
-window.saveAddModal = async function() {
-  const title = document.getElementById("addTitle").value.trim();
-  const dk    = document.getElementById("addDk").value;
-  if (!title) { document.getElementById("addTitle").focus(); return; }
-  const { start, end } = TIMESLOTS[selectedSlot];
-  const id = uid();
-  await writeSchedule(dk, id, { title, start, end, slot: selectedSlot });
-  closeAddModal();
+window.pickSlot=s=>{selectedSlot=s;renderSlotBtns();};
+window.closeAddModal=()=>document.getElementById("addModal").classList.remove("open");
+window.saveAddModal=async function(){
+  const title=document.getElementById("addTitle").value.trim();
+  const dk=document.getElementById("addDk").value;
+  if(!title){document.getElementById("addTitle").focus();return;}
+  const {start,end}=TIMESLOTS[selectedSlot];
+  await writeSchedule(dk,Date.now().toString(36),{title,start,end,slot:selectedSlot});
+  window.closeAddModal();
   showToast(t("scheduleAdded"));
 };
 
-// ─── Week nav ─────────────────────────────────────────────────────────────────
-window.prevWeek = () => { weekOffset--; updateWeekLabel(); renderAll(); };
-window.nextWeek = () => { weekOffset++; updateWeekLabel(); renderAll(); };
-window.goToday  = () => { weekOffset = 0; updateWeekLabel(); renderAll(); };
-
-function updateWeekLabel() {
-  const m = getMondayOf(weekOffset);
-  document.getElementById("weekLabel").textContent = fmtWeekLabel(m);
+// ── Week nav ──────────────────────────────────────────────────
+window.prevWeek=()=>{weekOffset--;updateWeekLabel();renderAll();};
+window.nextWeek=()=>{weekOffset++;updateWeekLabel();renderAll();};
+window.goToday =()=>{weekOffset=0;updateWeekLabel();renderAll();};
+function updateWeekLabel(){
+  const m=getMondayOf(weekOffset);
+  const sun=new Date(m);sun.setDate(sun.getDate()+6);
+  const f=d=>`${d.getMonth()+1}/${d.getDate()}`;
+  document.getElementById("weekLabel").textContent=`${f(m)} – ${f(sun)}`;
 }
 
-// ─── Language toggle ──────────────────────────────────────────────────────────
-window.toggleLang = function() {
-  lang = lang === "ko" ? "en" : "ko";
-  localStorage.setItem("lang", lang);
-  document.getElementById("langBtn").textContent = lang === "ko" ? "EN" : "한";
-  renderAll();
-  updateWeekLabel();
+// ── Language ──────────────────────────────────────────────────
+window.toggleLang=function(){
+  lang=lang==="ko"?"en":"ko";
+  localStorage.setItem("lang",lang);
+  document.getElementById("langBtn").textContent=lang==="ko"?"EN":"한";
+  renderAll();updateWeekLabel();
 };
 
-// ─── Tab switch ───────────────────────────────────────────────────────────────
-window.switchTab = function(tab) {
-  activeTab = tab;
-  document.querySelectorAll(".tab-btn").forEach(b => b.classList.toggle("active", b.dataset.tab===tab));
-  ["statusContent","teamContent","myContent"].forEach(id => {
-    document.getElementById(id).style.display = "none";
-  });
-  document.getElementById(tab+"Content").style.display = "block";
+// ── Tab switch ────────────────────────────────────────────────
+window.switchTab=function(tab){
+  activeTab=tab;
+  document.querySelectorAll(".tab-btn").forEach(b=>b.classList.toggle("active",b.dataset.tab===tab));
+  ["statusContent","teamContent","myContent"].forEach(id=>{document.getElementById(id).style.display="none";});
+  document.getElementById(tab+"Content").style.display="block";
+  document.getElementById("weekNav").style.display=(tab==="team"||tab==="my")?"flex":"none";
   renderAll();
 };
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-function escHtml(s) { return (s||"").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
-function hexAlpha(hex, a) {
-  const r=parseInt(hex.slice(1,3),16), g=parseInt(hex.slice(3,5),16), b=parseInt(hex.slice(5,7),16);
+// ── Helpers ───────────────────────────────────────────────────
+function getMondayOf(offset){
+  const d=new Date(),day=d.getDay();
+  d.setDate(d.getDate()+(day===0?-6:1-day)+offset*7);d.setHours(0,0,0,0);return d;
+}
+function dateKey(d){return d.toISOString().slice(0,10);}
+function escHtml(s){return(s||"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+function hexAlpha(hex,a){
+  const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
   return `rgba(${r},${g},${b},${a})`;
 }
+function showToast(msg,type="ok"){
+  const el=document.createElement("div");
+  el.className=`toast toast-${type}`;el.textContent=msg;
+  document.getElementById("toastArea").appendChild(el);
+  setTimeout(()=>el.remove(),3000);
+}
 
-// ─── Boot ─────────────────────────────────────────────────────────────────────
-window.showSetup  = showSetup;
-window.hideSetup  = hideSetup;
-window.saveSetup  = saveSetup;
+window.showLoginModal  = showLoginModal;
+window.showMasterPanel = showMasterPanel;
 
-(function boot() {
+// ── Boot ──────────────────────────────────────────────────────
+(function boot(){
   updateWeekLabel();
-  document.getElementById("langBtn").textContent = lang === "ko" ? "EN" : "한";
-
-  if (myName) {
-    document.getElementById("userBadge").textContent = myName;
-    document.getElementById("userBadge").style.background = myColor;
-  }
-
-  const ok = initFirebase();
-  if (!ok) loadLocal();
-
-  // Auto-refresh status tab every 60s
-  setInterval(() => { if (activeTab==="status") renderStatus(); }, 60000);
-
-  if (!myName) showSetup();
+  document.getElementById("langBtn").textContent=lang==="ko"?"EN":"한";
+  initFirebase();
+  setInterval(()=>{if(activeTab==="status")renderStatus();},60000);
+  setTimeout(()=>{
+    updateHeader();
+    if(!myId) showLoginModal();
+  },800);
 })();
 </script>
 
 <style>
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-:root {
-  --primary: #1a73e8;
-  --surface: #fff;
-  --bg: #f8f9fa;
-  --border: #dadce0;
-  --text: #202124;
-  --text2: #5f6368;
-  --shadow: 0 1px 4px rgba(0,0,0,.12);
-  --radius: 10px;
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --primary:#1a73e8;--bg:#f8f9fa;--surface:#fff;
+  --border:#dadce0;--text:#202124;--text2:#5f6368;
+  --shadow:0 1px 4px rgba(0,0,0,.12);--radius:10px;
 }
-html { font-size: 14px; }
-body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+html{font-size:14px;}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
 
 /* ── Header ── */
-.app-header {
-  position: sticky; top: 0; z-index: 100;
-  background: #fff; border-bottom: 1px solid var(--border);
-  display: flex; align-items: center; gap: 8px;
-  padding: 0 16px; height: 56px;
-}
-.app-header h1 { font-size: 1.1rem; font-weight: 700; color: var(--primary); flex: 1; }
-#connStatus { font-size: .75rem; color: var(--text2); }
-#langBtn {
-  border: 1px solid var(--border); border-radius: 6px;
-  background: #fff; padding: 4px 10px; cursor: pointer; font-weight: 600;
-}
-.user-badge {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 32px; height: 32px; border-radius: 50%;
-  color: #fff; font-weight: 700; cursor: pointer; font-size: .85rem;
-  border: 2px solid rgba(255,255,255,.6);
-}
+.app-header{position:sticky;top:0;z-index:100;background:#fff;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:8px;padding:0 16px;height:56px;}
+.app-header h1{font-size:1.1rem;font-weight:700;color:var(--primary);flex:1;}
+#connStatus{font-size:.75rem;color:var(--text2);}
+#langBtn{border:1px solid var(--border);border-radius:6px;background:#fff;padding:4px 10px;cursor:pointer;font-weight:600;}
+#masterBtn{border:none;border-radius:6px;background:#fff8e1;color:#f57f17;padding:4px 10px;cursor:pointer;font-size:.82rem;font-weight:600;display:none;}
+#logoutBtn{border:1px solid var(--border);border-radius:6px;background:#fff;padding:4px 10px;cursor:pointer;font-size:.82rem;color:var(--text2);display:none;}
+.user-badge{width:32px;height:32px;border-radius:50%;color:#fff;font-weight:700;cursor:pointer;
+  font-size:.85rem;display:flex;align-items:center;justify-content:center;
+  border:2px solid rgba(255,255,255,.5);flex-shrink:0;}
 
 /* ── Tabs ── */
-.tabs {
-  display: flex; background: #fff; border-bottom: 1px solid var(--border);
-  overflow-x: auto;
-}
-.tab-btn {
-  flex: 1; padding: 14px 8px; border: none; background: none;
-  font-size: .88rem; color: var(--text2); cursor: pointer;
-  border-bottom: 3px solid transparent; white-space: nowrap;
-  transition: all .2s;
-}
-.tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 600; }
+.tabs{display:flex;background:#fff;border-bottom:1px solid var(--border);overflow-x:auto;}
+.tab-btn{flex:1;padding:14px 8px;border:none;background:none;font-size:.88rem;color:var(--text2);
+  cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap;transition:all .2s;}
+.tab-btn.active{color:var(--primary);border-bottom-color:var(--primary);font-weight:600;}
 
 /* ── Week nav ── */
-.week-nav {
-  display: flex; align-items: center; gap: 8px;
-  padding: 10px 16px; background: #fff; border-bottom: 1px solid var(--border);
-}
-.week-nav button {
-  border: 1px solid var(--border); border-radius: 6px;
-  background: #fff; padding: 5px 12px; cursor: pointer; font-size: .82rem;
-}
-.week-nav button:hover { background: var(--bg); }
-#weekLabel { flex: 1; text-align: center; font-weight: 600; font-size: .95rem; }
+.week-nav{display:flex;align-items:center;gap:8px;padding:10px 16px;background:#fff;border-bottom:1px solid var(--border);}
+.week-nav button{border:1px solid var(--border);border-radius:6px;background:#fff;padding:5px 12px;cursor:pointer;font-size:.82rem;}
+.week-nav button:hover{background:var(--bg);}
+#weekLabel{flex:1;text-align:center;font-weight:600;font-size:.95rem;}
 
-/* ── Content areas ── */
-#statusContent, #teamContent, #myContent {
-  padding: 16px; max-width: 1100px; margin: 0 auto;
-}
+/* ── Content ── */
+#statusContent,#teamContent,#myContent{padding:16px;max-width:1100px;margin:0 auto;}
 
-/* ── My status card ── */
-.my-status-card {
-  background: #fff; border-radius: var(--radius); padding: 16px;
-  box-shadow: var(--shadow); margin-bottom: 20px;
-}
-.my-status-card h3 { margin-bottom: 12px; font-size: 1rem; }
-.status-btns { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
-.status-group { display: flex; flex-wrap: wrap; gap: 6px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
-.status-group:last-child { border-bottom: none; padding-bottom: 0; }
-.status-btn {
-  border: 2px solid var(--border); border-radius: 20px;
-  background: #fff; padding: 6px 14px; cursor: pointer; font-size: .85rem;
-  transition: all .15s;
-}
-.status-btn.active {
-  background: var(--sbg, var(--primary));
-  border-color: var(--sbg, var(--primary));
-  color: #fff; font-weight: 600;
-}
-.task-row { display: flex; gap: 8px; }
-.task-row input {
-  flex: 1; border: 1px solid var(--border); border-radius: 8px;
-  padding: 8px 12px; font-size: .9rem;
-}
-.task-row input:focus { outline: none; border-color: var(--primary); }
+/* ── Status card ── */
+.my-status-card{background:#fff;border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);margin-bottom:20px;}
+.my-status-card h3{margin-bottom:12px;font-size:1rem;}
+.status-btns{display:flex;flex-direction:column;gap:6px;margin-bottom:14px;}
+.status-group{display:flex;flex-wrap:wrap;gap:6px;padding-bottom:6px;border-bottom:1px solid var(--border);}
+.status-group:last-child{border-bottom:none;padding-bottom:0;}
+.status-btn{border:2px solid var(--border);border-radius:20px;background:#fff;padding:6px 14px;cursor:pointer;font-size:.85rem;transition:all .15s;}
+.status-btn.active{background:var(--sbg,var(--primary));border-color:var(--sbg,var(--primary));color:#fff;font-weight:600;}
+.task-row{display:flex;gap:8px;}
+.task-row input{flex:1;border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:.9rem;}
+.task-row input:focus{outline:none;border-color:var(--primary);}
 
-/* ── Dashboard cards ── */
-.team-dashboard {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px;
-}
-.dash-card {
-  background: #fff; border-radius: var(--radius); padding: 14px;
-  box-shadow: var(--shadow); border-left: 4px solid transparent;
-}
-.dash-card--me { border-left-color: var(--primary); }
-.dash-card-top { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
-.member-avatar {
-  width: 36px; height: 36px; border-radius: 50%;
-  color: #fff; font-weight: 700; display: flex; align-items: center; justify-content: center;
-  font-size: 1rem; flex-shrink: 0;
-}
-.dash-card-info { display: flex; flex-direction: column; gap: 3px; }
-.dash-card-info strong { font-size: .95rem; }
-.status-badge {
-  display: inline-block; border-radius: 12px; padding: 2px 8px;
-  font-size: .78rem; font-weight: 500;
-}
-.dash-task {
-  font-size: .83rem; color: var(--text2);
-  padding: 6px 8px; background: var(--bg); border-radius: 6px; margin-bottom: 6px;
-}
-.dash-updated { font-size: .73rem; color: #aaa; }
+/* ── Dashboard ── */
+.team-dashboard{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;}
+.dash-card{background:#fff;border-radius:var(--radius);padding:14px;box-shadow:var(--shadow);border-left:4px solid transparent;}
+.dash-card--me{border-left-color:var(--mc,var(--primary));}
+.dash-card-top{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+.member-avatar{width:36px;height:36px;border-radius:50%;color:#fff;font-weight:700;
+  display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0;}
+.dash-card-info{display:flex;flex-direction:column;gap:3px;flex:1;}
+.dash-card-info strong{font-size:.95rem;}
+.status-badge{display:inline-block;border-radius:12px;padding:2px 8px;font-size:.78rem;font-weight:500;}
+.dash-task{font-size:.83rem;color:var(--text2);padding:6px 8px;background:var(--bg);border-radius:6px;}
+.online-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
 
 /* ── Schedule table ── */
-.legend-row {
-  display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 12px;
-}
-.legend-item { display: flex; align-items: center; gap: 5px; font-size: .82rem; }
-.legend-dot { width: 12px; height: 12px; border-radius: 50%; }
+.legend-row{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px;}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:.82rem;}
+.legend-dot{width:12px;height:12px;border-radius:50%;}
+.table-scroll{overflow-x:auto;}
+.schedule-table{width:100%;border-collapse:collapse;min-width:500px;background:#fff;border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);}
+.schedule-table th,.schedule-table td{border:1px solid var(--border);padding:4px 6px;vertical-align:top;min-width:80px;}
+.schedule-table th{background:#f1f3f4;text-align:center;position:sticky;top:0;}
+th.today,td.today{background:#e8f0fe;}
+.time-cell{width:52px;min-width:52px;color:var(--text2);font-size:.78rem;text-align:right;padding-right:6px;}
+.time-head{width:52px;}
+.day-name{display:block;font-weight:700;font-size:.88rem;}
+.day-date{font-size:.75rem;color:var(--text2);}
+.team-block{border-radius:4px;padding:3px 5px;margin-bottom:3px;font-size:.77rem;line-height:1.3;}
+.block-name{font-weight:700;margin-right:3px;}
 
-.table-scroll { overflow-x: auto; }
-.schedule-table {
-  width: 100%; border-collapse: collapse; min-width: 600px;
-  background: #fff; border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow);
-}
-.schedule-table th, .schedule-table td {
-  border: 1px solid var(--border); padding: 4px 6px; vertical-align: top;
-  min-width: 90px;
-}
-.schedule-table th {
-  background: #f1f3f4; text-align: center; position: sticky; top: 0;
-}
-th.today, td.today { background: #e8f0fe; }
-.time-cell { width: 52px; min-width: 52px; color: var(--text2); font-size: .78rem; text-align: right; padding-right: 6px; white-space: nowrap; }
-.time-head { width: 52px; }
-.day-name { display: block; font-weight: 700; font-size: .88rem; }
-.day-date { font-size: .75rem; color: var(--text2); }
-
-.team-block {
-  border-radius: 4px; padding: 3px 5px; margin-bottom: 3px;
-  font-size: .77rem; line-height: 1.3;
-}
-.block-name { font-weight: 700; margin-right: 3px; }
-.block-title { }
-.block-time { display: block; font-size: .7rem; color: var(--text2); }
+/* ── My schedule ── */
+.day-tabs{display:flex;gap:4px;overflow-x:auto;padding-bottom:8px;margin-bottom:8px;}
+.day-tab{flex:1;min-width:44px;text-align:center;border:1px solid var(--border);border-radius:8px;
+  padding:6px 4px;background:#fff;cursor:pointer;font-size:.78rem;line-height:1.3;transition:all .15s;}
+.day-tab.active{background:var(--primary);color:#fff;border-color:var(--primary);font-weight:700;}
+.day-tab.today:not(.active){border-color:var(--primary);color:var(--primary);}
+.day-tab small{display:block;}
+.my-schedule-area{padding:4px 0;}
+.my-block{display:flex;align-items:center;gap:10px;border-radius:8px;padding:12px 14px;margin-bottom:8px;}
+.my-block-main{flex:1;display:flex;flex-direction:column;gap:4px;}
+.my-block-title{font-size:.95rem;font-weight:600;}
+.my-block-badge{display:inline-block;font-size:.75rem;color:var(--text2);background:rgba(0,0,0,.06);border-radius:10px;padding:2px 8px;}
+.empty-day{color:var(--text2);font-size:.9rem;padding:24px 0;text-align:center;}
+.add-day-btn{width:100%;border:2px dashed var(--border);border-radius:8px;background:none;
+  padding:12px;cursor:pointer;font-size:.9rem;color:var(--text2);margin-top:4px;transition:all .15s;}
+.add-day-btn:hover{border-color:var(--primary);color:var(--primary);}
+.del-btn{background:none;border:none;color:#e53935;font-size:1.2rem;cursor:pointer;padding:0 4px;flex-shrink:0;}
 
 /* ── Slot picker ── */
-.slot-pick {
-  display: flex; gap: 8px; flex-wrap: wrap;
-}
-.slot-pick-btn {
-  flex: 1; min-width: 90px;
-  display: flex; flex-direction: column; align-items: center; gap: 2px;
-  border: 2px solid var(--border); border-radius: 10px;
-  background: #fff; padding: 10px 8px; cursor: pointer;
-  font-size: .88rem; line-height: 1.3; transition: all .15s;
-}
-.slot-pick-btn small { font-size: .72rem; color: var(--text2); }
-.slot-pick-btn.active {
-  border-color: var(--primary); background: var(--primary);
-  color: #fff; font-weight: 700;
-}
-.slot-pick-btn.active small { color: rgba(255,255,255,.8); }
+.slot-pick{display:flex;gap:8px;flex-wrap:wrap;}
+.slot-pick-btn{flex:1;min-width:90px;display:flex;flex-direction:column;align-items:center;gap:2px;
+  border:2px solid var(--border);border-radius:10px;background:#fff;padding:10px 8px;
+  cursor:pointer;font-size:.88rem;line-height:1.3;transition:all .15s;}
+.slot-pick-btn small{font-size:.72rem;color:var(--text2);}
+.slot-pick-btn.active{border-color:var(--primary);background:var(--primary);color:#fff;font-weight:700;}
+.slot-pick-btn.active small{color:rgba(255,255,255,.8);}
 
-/* ── My schedule area ── */
-.my-schedule-area { padding: 4px 0; }
-.my-block {
-  display: flex; align-items: center; gap: 10px;
-  border-radius: 8px; padding: 12px 14px; margin-bottom: 8px;
-}
-.my-block-main { flex: 1; display: flex; flex-direction: column; gap: 4px; }
-.my-block-title { font-size: .95rem; font-weight: 600; }
-.my-block-badge {
-  display: inline-block; font-size: .75rem; color: var(--text2);
-  background: rgba(0,0,0,.06); border-radius: 10px; padding: 2px 8px;
-}
-.empty-day { color: var(--text2); font-size: .9rem; padding: 24px 0; text-align: center; }
-.add-day-btn {
-  width: 100%; border: 2px dashed var(--border); border-radius: 8px;
-  background: none; padding: 12px; cursor: pointer; font-size: .9rem;
-  color: var(--text2); margin-top: 4px; transition: all .15s;
-}
-.add-day-btn:hover { border-color: var(--primary); color: var(--primary); }
+/* ── Modal ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);
+  z-index:200;align-items:center;justify-content:center;}
+.modal-overlay.open{display:flex;}
+.modal{background:#fff;border-radius:var(--radius);padding:24px;
+  width:min(460px,94vw);box-shadow:0 8px 32px rgba(0,0,0,.2);max-height:90vh;overflow-y:auto;}
+.modal h2{font-size:1.1rem;margin-bottom:6px;}
+.modal-desc{font-size:.85rem;color:var(--text2);margin-bottom:16px;}
+.form-group{margin-bottom:14px;}
+.form-group label{display:block;font-size:.82rem;color:var(--text2);margin-bottom:4px;}
+.form-group input[type="text"]{width:100%;border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:.95rem;}
+.form-group input:focus{outline:none;border-color:var(--primary);}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;}
+.btn-primary{background:var(--primary);color:#fff;border:none;border-radius:8px;padding:8px 18px;cursor:pointer;font-size:.9rem;font-weight:600;}
+.btn-primary:hover{filter:brightness(1.1);}
+.btn-ghost{background:none;border:1px solid var(--border);border-radius:8px;padding:8px 18px;cursor:pointer;font-size:.9rem;}
 
-/* ── My schedule tab ── */
-.day-tabs {
-  display: flex; gap: 4px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 8px;
-}
-.day-tab {
-  flex: 1; min-width: 44px; text-align: center;
-  border: 1px solid var(--border); border-radius: 8px; padding: 6px 4px;
-  background: #fff; cursor: pointer; font-size: .78rem; line-height: 1.3;
-  transition: all .15s;
-}
-.day-tab.active { background: var(--primary); color: #fff; border-color: var(--primary); font-weight: 700; }
-.day-tab.today:not(.active) { border-color: var(--primary); color: var(--primary); }
-.day-tab small { display: block; }
+/* ── Login modal ── */
+.member-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.member-pick{display:flex;align-items:center;gap:10px;border:2px solid var(--border);
+  border-radius:10px;padding:10px 12px;background:#fff;cursor:pointer;text-align:left;
+  transition:all .15s;width:100%;}
+.member-pick:hover{border-color:var(--mc);background:rgba(0,0,0,.02);}
+.mp-avatar{width:32px;height:32px;border-radius:50%;color:#fff;font-weight:700;
+  display:flex;align-items:center;justify-content:center;font-size:.9rem;flex-shrink:0;}
+.mp-avatar.sm{width:28px;height:28px;font-size:.82rem;}
+.mp-info{display:flex;flex-direction:column;gap:2px;min-width:0;}
+.mp-name{font-size:.88rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mp-email{font-size:.7rem;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 
-.my-table { min-width: 320px; }
-.slot-cell { position: relative; min-height: 44px; }
-.del-btn {
-  background: none; border: none; color: #e53935;
-  font-size: 1.2rem; cursor: pointer; padding: 0 4px; line-height: 1; flex-shrink: 0;
-}
+/* ── PIN input ── */
+#pinArea{display:flex;flex-direction:column;align-items:center;gap:16px;}
+.pin-member-info{display:flex;align-items:center;gap:10px;}
+.pin-member-info .name{font-weight:700;font-size:.95rem;}
+.pin-member-info .email{font-size:.75rem;color:var(--text2);}
+#pinBoxes{display:flex;gap:12px;}
+.pin-box{width:52px;height:60px;border:2px solid var(--border);border-radius:10px;
+  text-align:center;font-size:1.6rem;font-weight:700;color:var(--text);
+  outline:none;transition:border-color .15s;-webkit-appearance:none;appearance:none;}
+.pin-box:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(26,115,232,.15);}
+@keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
+#pinBoxes.shake{animation:shake .4s ease;}
 
-/* ── Modals ── */
-.modal-overlay {
-  display: none; position: fixed; inset: 0;
-  background: rgba(0,0,0,.4); z-index: 200;
-  align-items: center; justify-content: center;
-}
-.modal-overlay.open { display: flex; }
-.modal {
-  background: #fff; border-radius: var(--radius); padding: 24px;
-  width: min(400px, 94vw); box-shadow: 0 8px 32px rgba(0,0,0,.18);
-}
-.modal h2 { font-size: 1.1rem; margin-bottom: 16px; }
-.form-group { margin-bottom: 14px; }
-.form-group label { display: block; font-size: .82rem; color: var(--text2); margin-bottom: 4px; }
-.form-group input[type="text"],
-.form-group input[type="time"] {
-  width: 100%; border: 1px solid var(--border); border-radius: 8px;
-  padding: 8px 12px; font-size: .95rem;
-}
-.form-group input:focus { outline: none; border-color: var(--primary); }
-.time-row { display: flex; gap: 10px; }
-.time-row .form-group { flex: 1; }
-.color-picker { display: flex; flex-wrap: wrap; gap: 8px; padding: 4px 0; }
-.color-dot {
-  width: 28px; height: 28px; border-radius: 50%; cursor: pointer;
-  border: 3px solid transparent; transition: border-color .15s;
-}
-.color-dot.selected { border-color: #202124; }
-.modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
-.btn-primary {
-  background: var(--primary); color: #fff;
-  border: none; border-radius: 8px; padding: 8px 18px;
-  cursor: pointer; font-size: .9rem; font-weight: 600;
-}
-.btn-primary:hover { filter: brightness(1.1); }
-.btn-ghost {
-  background: none; border: 1px solid var(--border); border-radius: 8px;
-  padding: 8px 18px; cursor: pointer; font-size: .9rem;
-}
+/* ── Master panel ── */
+.master-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);}
+.master-row:last-child{border-bottom:none;}
+.master-name{font-weight:600;font-size:.9rem;}
+.master-email{font-size:.72rem;color:var(--text2);}
+.pin-status{font-size:.78rem;color:var(--text2);min-width:80px;text-align:right;}
+.btn-unlock{border:1px solid #e53935;color:#e53935;border-radius:6px;
+  background:none;padding:4px 10px;cursor:pointer;font-size:.8rem;white-space:nowrap;}
+.btn-unlock:hover{background:#fce4ec;}
 
 /* ── Toast ── */
-#toastArea { position: fixed; bottom: 20px; right: 20px; z-index: 999; display: flex; flex-direction: column; gap: 8px; }
-.toast {
-  padding: 10px 18px; border-radius: 8px; font-size: .88rem;
-  box-shadow: var(--shadow); animation: slideIn .25s ease;
-  max-width: 280px;
-}
-.toast-ok   { background: #202124; color: #fff; }
-.toast-warn { background: #f57c00; color: #fff; }
-.toast-info { background: #1a73e8; color: #fff; }
-@keyframes slideIn { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+#toastArea{position:fixed;bottom:20px;right:20px;z-index:999;display:flex;flex-direction:column;gap:8px;}
+.toast{padding:10px 18px;border-radius:8px;font-size:.88rem;box-shadow:var(--shadow);
+  animation:slideIn .25s ease;max-width:280px;}
+.toast-ok{background:#202124;color:#fff;}
+.toast-warn{background:#f57c00;color:#fff;}
+@keyframes slideIn{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
 
-.empty-msg { color: var(--text2); font-size: .9rem; }
-
-/* ── Responsive ── */
-@media (max-width: 600px) {
-  .app-header h1 { font-size: .95rem; }
-  #statusContent, #teamContent, #myContent { padding: 10px; }
-  .team-dashboard { grid-template-columns: 1fr 1fr; }
-  .schedule-table th, .schedule-table td { min-width: 68px; padding: 3px 4px; }
+@media(max-width:600px){
+  .app-header h1{font-size:.95rem;}
+  #statusContent,#teamContent,#myContent{padding:10px;}
+  .team-dashboard{grid-template-columns:1fr 1fr;}
+  .member-grid{grid-template-columns:1fr;}
+  .pin-box{width:44px;height:52px;font-size:1.4rem;}
 }
 </style>
 </head>
 <body>
 
-<!-- ── App Header ── -->
+<!-- ── Header ── -->
 <header class="app-header">
   <h1 id="appTitle">Team Schedule</h1>
   <span id="connStatus" style="color:#aaa;font-size:.75rem"></span>
   <button id="langBtn" onclick="toggleLang()">EN</button>
-  <span id="userBadge" class="user-badge" onclick="showSetup()" title="프로필 수정">?</span>
+  <button id="masterBtn" onclick="showMasterPanel()">👑 관리</button>
+  <button id="logoutBtn" onclick="doLogout()">로그아웃</button>
+  <span id="userBadge" class="user-badge" onclick="showLoginModal()" style="background:#aaa">?</span>
 </header>
 
 <!-- ── Tabs ── -->
@@ -913,7 +816,7 @@ th.today, td.today { background: #e8f0fe; }
   <button class="tab-btn"        data-tab="my"     onclick="switchTab('my')">내 일정 입력</button>
 </nav>
 
-<!-- ── Week nav (shown on team/my tabs) ── -->
+<!-- ── Week nav ── -->
 <div class="week-nav" id="weekNav" style="display:none">
   <button onclick="prevWeek()">‹</button>
   <span id="weekLabel"></span>
@@ -923,27 +826,55 @@ th.today, td.today { background: #e8f0fe; }
 
 <!-- ── Content ── -->
 <div id="statusContent"></div>
-<div id="teamContent"   style="display:none"></div>
-<div id="myContent"     style="display:none"></div>
-
-<!-- ── Toast area ── -->
+<div id="teamContent" style="display:none"></div>
+<div id="myContent"   style="display:none"></div>
 <div id="toastArea"></div>
 
-<!-- ── Setup Modal ── -->
-<div class="modal-overlay" id="setupModal">
+<!-- ── Login Modal ── -->
+<div class="modal-overlay" id="loginModal">
   <div class="modal">
-    <h2 id="setupTitle">프로필 설정</h2>
-    <div class="form-group">
-      <label id="setupNameLabel">이름 / Name</label>
-      <input id="setupName" type="text" placeholder="이름을 입력하세요" maxlength="20"/>
+    <h2 id="loginTitle">사용자 선택</h2>
+    <p class="modal-desc" id="loginDesc">이름을 선택하세요</p>
+
+    <!-- 멤버 선택 그리드 -->
+    <div class="member-grid" id="memberGrid"></div>
+
+    <!-- PIN 입력 영역 -->
+    <div id="pinArea" style="display:none">
+      <div class="pin-member-info">
+        <span class="mp-avatar" id="pinAvatar" style="width:40px;height:40px;font-size:1.1rem;border-radius:50%;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0"></span>
+        <div>
+          <div class="name" id="pinMemberName"></div>
+          <div class="email" id="pinMemberEmail"></div>
+        </div>
+      </div>
+      <div id="pinBoxes">
+        <input class="pin-box" type="number" min="0" max="9" maxlength="1"
+          oninput="onPinInput(event,0)" onkeydown="onPinKeydown(event,0)"/>
+        <input class="pin-box" type="number" min="0" max="9" maxlength="1"
+          oninput="onPinInput(event,1)" onkeydown="onPinKeydown(event,1)"/>
+        <input class="pin-box" type="number" min="0" max="9" maxlength="1"
+          oninput="onPinInput(event,2)" onkeydown="onPinKeydown(event,2)"/>
+        <input class="pin-box" type="number" min="0" max="9" maxlength="1"
+          oninput="onPinInput(event,3)" onkeydown="onPinKeydown(event,3)"/>
+      </div>
     </div>
-    <div class="form-group">
-      <label>색상 / Color</label>
-      <div class="color-picker" id="setupColorPicker"></div>
+
+    <div class="modal-actions" style="margin-top:16px">
+      <button id="loginBackBtn" class="btn-ghost" style="display:none"
+        onclick="pinStep='select';renderLoginModal()">← 뒤로</button>
     </div>
+  </div>
+</div>
+
+<!-- ── Master Panel Modal ── -->
+<div class="modal-overlay" id="masterModal">
+  <div class="modal">
+    <h2>👑 관리자 패널</h2>
+    <p class="modal-desc">PIN 설정 현황을 확인하고 초기화할 수 있습니다.</p>
+    <div id="masterPanelBody"></div>
     <div class="modal-actions">
-      <button class="btn-ghost" onclick="hideSetup()">취소</button>
-      <button class="btn-primary" onclick="saveSetup()">저장</button>
+      <button class="btn-ghost" onclick="closeMasterPanel()">닫기</button>
     </div>
   </div>
 </div>
@@ -951,7 +882,7 @@ th.today, td.today { background: #e8f0fe; }
 <!-- ── Add Schedule Modal ── -->
 <div class="modal-overlay" id="addModal">
   <div class="modal">
-    <h2>일정 추가</h2>
+    <h2>일정 추가 / Add Schedule</h2>
     <input type="hidden" id="addDk"/>
     <div class="form-group">
       <label>내용 / Title</label>
@@ -961,35 +892,23 @@ th.today, td.today { background: #e8f0fe; }
     <div class="form-group">
       <label>시간대 / Time Slot</label>
       <div class="slot-pick">
-        <button class="slot-pick-btn" data-slot="AM"   onclick="pickSlot('AM')">
-          🌅 <span class="slot-ko">오전</span><span class="slot-en">Morning</span>
-          <small>09:00 – 13:00</small>
+        <button class="slot-pick-btn" data-slot="AM" onclick="pickSlot('AM')">
+          🌅 오전/Morning<small>09:00–13:00</small>
         </button>
-        <button class="slot-pick-btn" data-slot="PM"   onclick="pickSlot('PM')">
-          🌆 <span class="slot-ko">오후</span><span class="slot-en">Afternoon</span>
-          <small>14:00 – 18:00</small>
+        <button class="slot-pick-btn" data-slot="PM" onclick="pickSlot('PM')">
+          🌆 오후/Afternoon<small>14:00–18:00</small>
         </button>
         <button class="slot-pick-btn active" data-slot="FULL" onclick="pickSlot('FULL')">
-          ☀️ <span class="slot-ko">하루</span><span class="slot-en">Full Day</span>
-          <small>09:00 – 18:00</small>
+          ☀️ 하루/Full Day<small>09:00–18:00</small>
         </button>
       </div>
     </div>
     <div class="modal-actions">
-      <button class="btn-ghost" onclick="closeAddModal()">취소 / Cancel</button>
-      <button class="btn-primary" onclick="saveAddModal()">추가 / Add</button>
+      <button class="btn-ghost" onclick="closeAddModal()">취소</button>
+      <button class="btn-primary" onclick="saveAddModal()">추가</button>
     </div>
   </div>
 </div>
-
-<script>
-// Tab switching shows/hides week nav
-const _origSwitch = window.switchTab;
-window.switchTab = function(tab) {
-  _origSwitch(tab);
-  document.getElementById("weekNav").style.display = (tab==="team"||tab==="my") ? "flex" : "none";
-};
-</script>
 
 </body>
 </html>
