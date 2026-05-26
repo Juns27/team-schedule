@@ -57,8 +57,9 @@ const LANG = {
     masterPanel:"관리자 패널", pinResetBtn:"PIN 초기화",
     logout:"로그아웃", logoutConfirm:"로그아웃 하시겠어요?",
     statusOffice:"출근", statusRemote:"재택", statusField:"외근",
-    statusBusiness:"출장", statusTraining:"교육", statusSeminar:"세미나",
-    statusVacation:"휴가", statusAnnual:"연차", statusHalfAM:"오전반차", statusHalfPM:"오후반차",
+    statusBusiness:"출장", statusVacation:"휴가",
+    schedTraining:"교육", schedSeminar:"세미나", schedRefresh:"리프레시",
+    schedAnnual:"연차", schedHalfAM:"오전반차", schedHalfPM:"오후반차",
   },
   en: {
     appTitle:"Team Schedule", tabStatus:"Live Dashboard", tabTeam:"Team Schedule", tabMy:"My Schedule",
@@ -80,18 +81,30 @@ const LANG = {
     masterPanel:"Admin Panel", pinResetBtn:"Reset PIN",
     logout:"Logout", logoutConfirm:"Are you sure you want to logout?",
     statusOffice:"In Office", statusRemote:"Remote", statusField:"Field Work",
-    statusBusiness:"Business Trip", statusTraining:"Training", statusSeminar:"Seminar",
-    statusVacation:"Vacation", statusAnnual:"Annual Leave", statusHalfAM:"Half Day AM", statusHalfPM:"Half Day PM",
+    statusBusiness:"Business Trip", statusVacation:"Vacation",
+    schedTraining:"Training", schedSeminar:"Seminar", schedRefresh:"Refresh",
+    schedAnnual:"Annual Leave", schedHalfAM:"Half Day AM", schedHalfPM:"Half Day PM",
   }
 };
 
+// 현황판 전용 상태 (5개)
 const STATUS_META = {
-  office:   {icon:"🏢",key:"statusOffice"},  remote:  {icon:"🏠",key:"statusRemote"},
-  field:    {icon:"🚗",key:"statusField"},   business:{icon:"✈️", key:"statusBusiness"},
-  training: {icon:"📚",key:"statusTraining"},seminar: {icon:"🎤",key:"statusSeminar"},
-  vacation: {icon:"🌴",key:"statusVacation"},annual:  {icon:"📅",key:"statusAnnual"},
-  halfAM:   {icon:"🌅",key:"statusHalfAM"}, halfPM:  {icon:"🌇",key:"statusHalfPM"},
+  office:   {icon:"🏢", key:"statusOffice"},
+  remote:   {icon:"🏠", key:"statusRemote"},
+  field:    {icon:"🚗", key:"statusField"},
+  business: {icon:"✈️",  key:"statusBusiness"},
+  vacation: {icon:"🌴", key:"statusVacation"},
 };
+
+// 내 일정 입력 전용 일정 유형 (6개)
+const SCHED_TYPES = [
+  {key:"training", icon:"📚", labelKey:"schedTraining"},
+  {key:"seminar",  icon:"🎤", labelKey:"schedSeminar"},
+  {key:"refresh",  icon:"🌿", labelKey:"schedRefresh"},
+  {key:"annual",   icon:"📅", labelKey:"schedAnnual"},
+  {key:"halfAM",   icon:"🌅", labelKey:"schedHalfAM"},
+  {key:"halfPM",   icon:"🌇", labelKey:"schedHalfPM"},
+];
 
 const TIMESLOTS = {
   AM:{start:"09:00",end:"13:00"}, PM:{start:"14:00",end:"18:00"}, FULL:{start:"09:00",end:"18:00"}
@@ -372,9 +385,6 @@ function renderStatus() {
   const myStatusVal = me.status || "office";
   const myTask = me.task || "";
 
-  const G1=["office","remote","field","business"];
-  const G2=["training","seminar"];
-  const G3=["vacation","annual","halfAM","halfPM"];
   const mkBtn = k => {
     const v = STATUS_META[k], active = myStatusVal===k;
     return `<button class="status-btn${active?" active":""}"
@@ -386,9 +396,7 @@ function renderStatus() {
     <div class="my-status-card">
       <h3>${t("myStatus")} — <span style="color:${myMember()?.color||"#aaa"}">${myMember()?.name||""}</span></h3>
       <div class="status-btns">
-        <div class="status-group">${G1.map(mkBtn).join("")}</div>
-        <div class="status-group">${G2.map(mkBtn).join("")}</div>
-        <div class="status-group">${G3.map(mkBtn).join("")}</div>
+        <div class="status-group">${Object.keys(STATUS_META).map(mkBtn).join("")}</div>
       </div>
       <div class="task-row">
         <input id="taskInput" type="text" placeholder="${t("currentTaskPh")}"
@@ -548,6 +556,29 @@ function renderSlotBtns() {
   });
 }
 window.pickSlot=s=>{selectedSlot=s;renderSlotBtns();};
+
+// 일정 유형 빠른 선택 — 제목 자동 입력 + 슬롯 자동 선택
+const QUICK_TYPES = {
+  office:   {label:()=>t("statusOffice"),   slot:"FULL"},
+  remote:   {label:()=>t("statusRemote"),   slot:"FULL"},
+  field:    {label:()=>t("statusField"),    slot:"FULL"},
+  business: {label:()=>t("statusBusiness"), slot:"FULL"},
+  vacation: {label:()=>t("statusVacation"), slot:"FULL"},
+  training: {label:()=>t("schedTraining"),  slot:"FULL"},
+  seminar:  {label:()=>t("schedSeminar"),   slot:"FULL"},
+  refresh:  {label:()=>t("schedRefresh"),   slot:"FULL"},
+  annual:   {label:()=>t("schedAnnual"),    slot:"FULL"},
+  halfAM:   {label:()=>t("schedHalfAM"),    slot:"AM"},
+  halfPM:   {label:()=>t("schedHalfPM"),    slot:"PM"},
+};
+window.pickSchedType=function(key){
+  const qt = QUICK_TYPES[key];
+  if(!qt) return;
+  document.getElementById("addTitle").value = qt.label();
+  selectedSlot = qt.slot;
+  renderSlotBtns();
+};
+
 window.closeAddModal=()=>document.getElementById("addModal").classList.remove("open");
 window.saveAddModal=async function(){
   const title=document.getElementById("addTitle").value.trim();
@@ -718,6 +749,12 @@ th.today,td.today{background:#e8f0fe;}
 .add-day-btn:hover{border-color:var(--primary);color:var(--primary);}
 .del-btn{background:none;border:none;color:#e53935;font-size:1.2rem;cursor:pointer;padding:0 4px;flex-shrink:0;}
 
+/* ── Sched type quick pick ── */
+.sched-type-row{display:flex;flex-wrap:wrap;gap:6px;}
+.sched-type-btn{border:1px solid var(--border);border-radius:16px;background:#f8f9fa;
+  padding:5px 12px;cursor:pointer;font-size:.82rem;transition:all .15s;white-space:nowrap;}
+.sched-type-btn:hover{border-color:var(--primary);background:#e8f0fe;color:var(--primary);}
+
 /* ── Slot picker ── */
 .slot-pick{display:flex;gap:8px;flex-wrap:wrap;}
 .slot-pick-btn{flex:1;min-width:90px;display:flex;flex-direction:column;align-items:center;gap:2px;
@@ -884,6 +921,24 @@ th.today,td.today{background:#e8f0fe;}
   <div class="modal">
     <h2>일정 추가 / Add Schedule</h2>
     <input type="hidden" id="addDk"/>
+    <div class="form-group">
+      <label>빠른 선택 / Quick Pick</label>
+      <div class="sched-type-row">
+        <button class="sched-type-btn" onclick="pickSchedType('office')">🏢 출근</button>
+        <button class="sched-type-btn" onclick="pickSchedType('remote')">🏠 재택</button>
+        <button class="sched-type-btn" onclick="pickSchedType('field')">🚗 외근</button>
+        <button class="sched-type-btn" onclick="pickSchedType('business')">✈️ 출장</button>
+        <button class="sched-type-btn" onclick="pickSchedType('vacation')">🌴 휴가</button>
+      </div>
+      <div class="sched-type-row" style="margin-top:6px">
+        <button class="sched-type-btn" onclick="pickSchedType('training')">📚 교육</button>
+        <button class="sched-type-btn" onclick="pickSchedType('seminar')">🎤 세미나</button>
+        <button class="sched-type-btn" onclick="pickSchedType('refresh')">🌿 리프레시</button>
+        <button class="sched-type-btn" onclick="pickSchedType('annual')">📅 연차</button>
+        <button class="sched-type-btn" onclick="pickSchedType('halfAM')">🌅 오전반차</button>
+        <button class="sched-type-btn" onclick="pickSchedType('halfPM')">🌇 오후반차</button>
+      </div>
+    </div>
     <div class="form-group">
       <label>내용 / Title</label>
       <input id="addTitle" type="text" placeholder="일정 내용" maxlength="60"
