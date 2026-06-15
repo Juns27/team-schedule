@@ -518,7 +518,7 @@ function renderMy() {
   const member = myMember();
   const slotLabels={AM:t("slotAM"),PM:t("slotPM"),FULL:t("slotFull")};
 
-  const dayTabs=Array.from({length:7},(_,i)=>{
+  const dayTabs=Array.from({length:5},(_,i)=>{
     const d=new Date(monday); d.setDate(d.getDate()+i);
     const isToday=dateKey(d)===dateKey(new Date());
     return `<button class="day-tab${i===myDayOffset?" active":""}${isToday?" today":""}" data-di="${i}">
